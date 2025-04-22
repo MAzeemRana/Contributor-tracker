@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Organization Tracker</title>
+    <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>GitHub Organization Tracker</h1>
+        <div class="search-bar">
+            <input type="text" id="orgName" placeholder="Enter GitHub Organization Name">
+            <button onclick="fetchOrganizationDetails()">Track</button>
+        </div>
+    </header>
+
+    <section id="organizationDetails" class="details-card">
+    </section>
+
+    <section id="repositories" class="repositories-grid">
+        <h2>Repositories</h2>
+        <div id="repoGrid" class="grid">
+        </div>
+        <p id="noRepos" class="empty-message" style="display:none;">No repositories found for this organization.</p>
+    </section>
+</div>
+
+<script>
+    const organizationDetailsDiv = document.getElementById('organizationDetails');
+    const repoGridDiv = document.getElementById('repoGrid');
+    const noReposMessage = document.getElementById('noRepos');
+
+    async function fetchOrganizationDetails() {
+        const orgNameInput = document.getElementById('orgName');
+        const orgName = orgNameInput.value.trim();
+
+        if (orgName) {
+            try {
+                const response = await fetch(`http://localhost:8080/api/github/org/${orgName}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayOrganizationDetails(data);
+                    fetchRepositories(orgName);
+                } else {
+                    organizationDetailsDiv.innerHTML = '<p class="error">Organization not found.</p>';
+                    repoGridDiv.innerHTML = '';
+                    noReposMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Error fetching organization details:", error);
+                organizationDetailsDiv.innerHTML = '<p class="error">Failed to fetch organization details.</p>';
+                repoGridDiv.innerHTML = '';
+                noReposMessage.style.display = 'block';
+            }
+        } else {
+            organizationDetailsDiv.innerHTML = '<p class="warning">Please enter an organization name.</p>';
+            repoGridDiv.innerHTML = '';
+            noReposMessage.style.display = 'none';
+        }
+    }
+
+    async function fetchRepositories(orgName) {
+        try {
+            const response = await fetch(`http://localhost:8080/api/github/org/${orgName}/repos`);
+            if (response.ok) {
+                const data = await response.json();
+                displayRepositories(data);
+                noReposMessage.style.display = 'none';
+            } else {
+                repoGridDiv.innerHTML = '';
+                noReposMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error("Error fetching repositories:", error);
+            repoGridDiv.innerHTML = '<p class="error">Failed to fetch repositories.</p>';
+            noReposMessage.style.display = 'block';
+        }
+    }
+
+    function displayOrganizationDetails(org) {
+        organizationDetailsDiv.innerHTML = `
+            <div class="org-info">
+                <h3>${org.name || org.login}</h3>
+                <p class="description">${org.description || 'No description available.'}</p>
+                <p><strong>URL:</strong> <a href="${org.url}" target="_blank" class="link">${org.url}</a></p>
+            </div>
+            `;
+    }
+
+    function displayRepositories(repos) {
+        repoGridDiv.innerHTML = '';
+        if (repos && repos.length > 0) {
+            repos.forEach(repo => {
+                const repoCard = document.createElement('div');
+                repoCard.classList.add('repo-card');
+                repoCard.innerHTML = `
+                    <h4><a href="${repo.html_url}" target="_blank" class="repo-link">${repo.name}</a></h4>
+                    <p class="repo-description">${repo.description || 'No description'}</p>
+                    <div class="repo-details">
+                        <span class="detail"><strong>Full Name:</strong> ${repo.full_name}</span>
+                    </div>
+                `;
+                repoGridDiv.appendChild(repoCard);
+            });
+        } else {
+            noReposMessage.style.display = 'block';
+        }
+    }
+
+    // Add JavaScript functions to fetch and display contributors, commits, etc.
+</script>
+</body>
+</html>
